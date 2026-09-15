@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large files & storage
+staging/*
+rag_storage/*
+!rag_storage/completed_books.json
+*.zip
+*.log
+*.faiss
+*.db
+
+# Gradle & Android build files
+.gradle/
+build/
+app/build/
+*.apk
+*.aar
+
+# IDE & Editor files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
