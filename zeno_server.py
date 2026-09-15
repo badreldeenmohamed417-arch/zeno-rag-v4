@@ -112,7 +112,7 @@ def run_download_and_process_task(source_url):
             job_state["source_url"] = source_url
 
         dl_endpoint = f"{source_url.rstrip('/')}/download"
-        req = urllib.request.Request(dl_endpoint, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(dl_endpoint, headers={'User-Agent': 'Mozilla/5.0', 'ngrok-skip-browser-warning': 'true'})
         
         target_zip = STAGING_DIR / "incoming_books.zip"
         with urllib.request.urlopen(req, timeout=600) as resp, open(target_zip, "wb") as out_f:

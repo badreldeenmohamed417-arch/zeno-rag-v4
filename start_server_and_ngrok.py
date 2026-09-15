@@ -29,19 +29,19 @@ print(f"📦 Staging zips available: {len(zips)}")
 for z in zips:
     print(f"   - {z.name} ({z.stat().st_size / (1024*1024):.1f} MB)")
 
-# 1. Start file_server.py if not running
+# 1. Start zeno_server.py if not running
 server_running = False
 try:
-    with urllib.request.urlopen("http://127.0.0.1:8000/status", timeout=2) as resp:
+    with urllib.request.urlopen("http://127.0.0.1:8000/api/status?secret=zeno_secret_12345", timeout=2) as resp:
         if resp.status == 200:
             server_running = True
-            print("✅ File server already running on port 8000")
+            print("✅ Zeno Server V4 already running on port 8000")
 except Exception:
     pass
 
 if not server_running:
-    print("▶ Starting file_server.py on port 8000...")
-    subprocess.Popen([sys.executable, str(BASE_DIR / "file_server.py")])
+    print("▶ Starting zeno_server.py on port 8000...")
+    subprocess.Popen([sys.executable, str(BASE_DIR / "zeno_server.py")])
     time.sleep(2)
 
 # 2. Get or start ngrok tunnel

@@ -125,6 +125,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/octet-stream")
                 self.send_header("Content-Length", str(size))
+                self.send_header("ngrok-skip-browser-warning", "true")
                 self.end_headers()
                 with open(zip_path, "rb") as f:
                     while True:
