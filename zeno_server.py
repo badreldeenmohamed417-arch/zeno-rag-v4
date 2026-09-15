@@ -211,18 +211,49 @@ class ZenoRequestHandler(BaseHTTPRequestHandler):
     def send_error_json(self, message, code=400):
         self.send_json({"status": "error", "message": message}, code)
 
+    def do_HEAD(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path.lstrip("/").split("?")[0]
+        filepath = STAGING_DIR / path
+        if filepath.exists() and filepath.is_file():
+            size = filepath.stat().st_size
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(size))
+            self.send_header("ngrok-skip-browser-warning", "true")
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path.rstrip("/")
+        path = parsed.path.lstrip("/").split("?")[0]
 
-        if path == "/api/status":
+        # Direct file serving for staging files (e.g. books_worker_1.zip)
+        filepath = STAGING_DIR / path
+        if filepath.exists() and filepath.is_file():
+            size = filepath.stat().st_size
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(size))
+            self.send_header("ngrok-skip-browser-warning", "true")
+            self.end_headers()
+            with open(filepath, "rb") as f:
+                while True:
+                    c = f.read(1024 * 1024)
+                    if not c: break
+                    self.wfile.write(c)
+            return
+
+        if path == "api/status":
             if not self.check_auth():
                 return self.send_error_json("Unauthorized: Missing or invalid X-Server-Secret", 401)
             update_progress_stats()
             with state_lock:
                 return self.send_json(job_state)
 
-        elif path == "/api/logs":
+        elif path == "api/logs":
             if not self.check_auth():
                 return self.send_error_json("Unauthorized: Missing or invalid X-Server-Secret", 401)
             lines = []
@@ -231,7 +262,7 @@ class ZenoRequestHandler(BaseHTTPRequestHandler):
                     lines = f.readlines()[-100:]
             return self.send_json({"logs": [l.strip() for l in lines]})
 
-        elif path == "/download":
+        elif path == "download":
             # Serves books zip if available
             zip_path = STAGING_DIR / "books_package.zip"
             if not zip_path.exists():
