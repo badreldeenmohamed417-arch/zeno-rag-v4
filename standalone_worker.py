@@ -41,23 +41,50 @@ SERVER_URL = SERVER_URL.rstrip('/')
 download_url = f"{SERVER_URL}/books_worker_{WORKER_ID}.zip"
 print(f"Downloading: {download_url}")
 
-try:
-    req = urllib.request.Request(download_url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=600) as resp:
-        total = int(resp.headers.get('Content-Length', 0))
-        got = 0
-        with open(BOOKS_ZIP, 'wb') as f:
-            while True:
-                chunk = resp.read(1024 * 1024)
-                if not chunk:
-                    break
-                f.write(chunk)
-                got += len(chunk)
-                if total:
-                    print(f"\r  {got/(1024*1024):.0f}/{total/(1024*1024):.0f} MB ({got*100/total:.0f}%)", end="", flush=True)
-    print(f"\n✅ Downloaded ({BOOKS_ZIP.stat().st_size/(1024*1024):.0f} MB)")
-except Exception as e:
-    print(f"❌ Download failed: {e}")
+def download_books_with_resume(url, save_path):
+    attempts = 0
+    while attempts < 10:
+        attempts += 1
+        existing_bytes = save_path.stat().st_size if save_path.exists() else 0
+        req_headers = {**HEADERS}
+        if existing_bytes > 0:
+            req_headers['Range'] = f"bytes={existing_bytes}-"
+        
+        try:
+            req = urllib.request.Request(url, headers=req_headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                code = resp.getcode()
+                content_len = resp.headers.get('Content-Length')
+                total = int(content_len) + existing_bytes if (content_len and code == 206) else (int(content_len) if content_len else 0)
+                
+                mode = "ab" if (code == 206 and existing_bytes > 0) else "wb"
+                if mode == "wb":
+                    existing_bytes = 0
+
+                got = existing_bytes
+                with open(save_path, mode) as f:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        got += len(chunk)
+                        if total:
+                            print(f"\r  {got/(1024*1024):.1f}/{total/(1024*1024):.1f} MB ({got*100/total:.0f}%)", end="", flush=True)
+
+            # Validate Zip Integrity
+            with zipfile.ZipFile(save_path, 'r') as zf:
+                if zf.testzip() is None:
+                    print(f"\n✅ Downloaded & Verified ({save_path.stat().st_size/(1024*1024):.1f} MB)")
+                    return True
+        except Exception as e:
+            print(f"\n⚠️ Download attempt {attempts}/10 issue: {e}")
+            time.sleep(3)
+            
+    print(f"❌ Failed to download valid zip after {attempts} attempts")
+    return False
+
+if not download_books_with_resume(download_url, BOOKS_ZIP):
     sys.exit(1)
 
 # ============ STEP 2: EXTRACT ============

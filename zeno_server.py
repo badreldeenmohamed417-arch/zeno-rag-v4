@@ -234,16 +234,34 @@ class ZenoRequestHandler(BaseHTTPRequestHandler):
         filepath = STAGING_DIR / path
         if filepath.exists() and filepath.is_file():
             size = filepath.stat().st_size
-            self.send_response(200)
+            range_header = self.headers.get('Range')
+            start = 0
+            end = size - 1
+            if range_header and range_header.startswith('bytes='):
+                parts = range_header.split('=')[1].split('-')
+                start = int(parts[0]) if parts[0] else 0
+                if len(parts) > 1 and parts[1]:
+                    end = int(parts[1])
+                self.send_response(206)
+                self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+            else:
+                self.send_response(200)
+            
+            length = end - start + 1
             self.send_header("Content-Type", "application/octet-stream")
-            self.send_header("Content-Length", str(size))
+            self.send_header("Content-Length", str(length))
+            self.send_header("Accept-Ranges", "bytes")
             self.send_header("ngrok-skip-browser-warning", "true")
             self.end_headers()
+            
             with open(filepath, "rb") as f:
-                while True:
-                    c = f.read(1024 * 1024)
-                    if not c: break
-                    self.wfile.write(c)
+                f.seek(start)
+                to_send = length
+                while to_send > 0:
+                    chunk = f.read(min(1024 * 1024, to_send))
+                    if not chunk: break
+                    self.wfile.write(chunk)
+                    to_send -= len(chunk)
             return
 
         if path == "api/status":
