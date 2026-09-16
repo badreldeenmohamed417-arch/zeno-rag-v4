@@ -265,20 +265,28 @@ print(f"Results: {sz/(1024*1024):.1f} MB")
 
 # Upload results back to server
 print(f"Uploading results to {SERVER_URL}/submit/{WORKER_ID}...")
-try:
-    with open(RESULTS_ZIP, 'rb') as f:
-        data = f.read()
-    req = urllib.request.Request(
-        f"{SERVER_URL}/submit/{WORKER_ID}",
-        data=data,
-        method="POST",
-        headers={**HEADERS, 'Content-Type': 'application/octet-stream', 'Content-Length': str(len(data))}
-    )
-    with urllib.request.urlopen(req, timeout=600) as resp:
-        print(f"  Server response: {resp.read().decode()}")
-    print("✅ Results uploaded!")
-except Exception as e:
-    print(f"❌ Upload failed: {e}")
+upload_success = False
+for attempt in range(1, 11):
+    try:
+        with open(RESULTS_ZIP, 'rb') as f:
+            data = f.read()
+        req = urllib.request.Request(
+            f"{SERVER_URL}/submit/{WORKER_ID}",
+            data=data,
+            method="POST",
+            headers={**HEADERS, 'Content-Type': 'application/octet-stream', 'Content-Length': str(len(data))}
+        )
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            print(f"  Server response: {resp.read().decode()}")
+        print("✅ Results uploaded!")
+        upload_success = True
+        break
+    except Exception as e:
+        print(f"⚠️ Upload attempt {attempt}/10 failed: {e}")
+        time.sleep(5)
+
+if not upload_success:
+    print("❌ All upload attempts failed.")
     print("Results are saved locally at /content/results.zip")
 
 # Send completed IDs
