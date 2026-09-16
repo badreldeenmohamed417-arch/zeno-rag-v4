@@ -9,9 +9,10 @@ No ongoing connection - just download at start, upload at end.
 import os
 import sys
 import json
-import shutil
 import zipfile
+import shutil
 import urllib.request
+import time
 from pathlib import Path
 
 import nest_asyncio
